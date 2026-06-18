@@ -8,7 +8,7 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gdk
 
-from click_sounds import list_sound_packs
+from click_sounds import list_sound_packs, ClickSoundPlayer
 
 MOON_SVG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 <svg width="64px" height="64px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg">
@@ -20,7 +20,7 @@ class MainWindow(Adw.ApplicationWindow):
     def __init__(self, app, backend_toggle, backend_config, backend_suspend, listener, initial_config, preset_manager, theme_cb, preset_cb):
         super().__init__(application=app, title="Moonlight")
 
-        self.set_default_size(520, 720)
+        self.set_default_size(780, 720)
         self.set_resizable(False)
 
         self.backend_toggle = backend_toggle
@@ -38,6 +38,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.color_buttons = {}
 
         self.sliders_map = {}
+        self.sound_preview = ClickSoundPlayer()
+        self._updating_sound_pack = False
         self.last_focus_time = 0
         self.is_binding = False
         self.last_bind_time = 0
@@ -229,9 +231,9 @@ class MainWindow(Adw.ApplicationWindow):
         card_act.append(self.row_bind_right)
 
         hbox_middle.append(card_act)
-        box.append(hbox_middle)
 
         self.card_conf = self.create_card("CONFIGURATION")
+        self.card_conf.set_hexpand(True)
 
         self.box_cps_left, self.lbl_cps_left = self.add_slider(self.card_conf, "Left Click CPS", 1.0, 20.0, self.cfg.get('cps_left', 12.0), 0.5, lambda v: self.update_config({'cps_left': v}), 'cps_left')
         self.card_conf.append(self.create_sep())
@@ -278,7 +280,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.sw_sounds = Gtk.Switch()
         self.sw_sounds.set_active(self.cfg.get('click_sounds', True))
         self.sw_sounds.set_valign(Gtk.Align.CENTER)
-        self.sw_sounds.connect("notify::active", lambda w, p: self.update_config({'click_sounds': w.get_active()}))
+        self.sw_sounds.connect("notify::active", lambda w, p: self._sync_sound_config(preview=True))
         row_sounds.append(lbl_sounds)
         row_sounds.append(self.sw_sounds)
         self.card_conf.append(row_sounds)
@@ -286,25 +288,30 @@ class MainWindow(Adw.ApplicationWindow):
         row_pack = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         lbl_pack = Gtk.Label(label="Sound Pack", xalign=0, hexpand=True)
         self.sound_packs = list_sound_packs()
-        pack_model = Gtk.StringList.new(self.sound_packs)
+        pack_model = Gtk.StringList()
+        for pack_name in self.sound_packs:
+            pack_model.append(pack_name)
         self.dd_sound_pack = Gtk.DropDown(model=pack_model)
         self.dd_sound_pack.set_valign(Gtk.Align.CENTER)
         saved_pack = self.cfg.get('click_sound_pack', self.sound_packs[0])
         if saved_pack in self.sound_packs:
+            self._updating_sound_pack = True
             self.dd_sound_pack.set_selected(self.sound_packs.index(saved_pack))
+            self._updating_sound_pack = False
         self.dd_sound_pack.connect("notify::selected", self.on_sound_pack_changed)
         row_pack.append(lbl_pack)
         row_pack.append(self.dd_sound_pack)
         self.card_conf.append(row_pack)
 
-        self.add_slider(self.card_conf, "Sound Volume %", 0, 100, self.cfg.get('click_sound_volume', 80.0), 5, lambda v: self.update_config({'click_sound_volume': v}), 'click_sound_volume')
+        self.add_slider(self.card_conf, "Sound Volume %", 0, 100, self.cfg.get('click_sound_volume', 80.0), 5, lambda v: self._sync_sound_config(), 'click_sound_volume')
         self.card_conf.append(self.create_sep())
 
         self.row_hide = self.create_bind_row("Hide Window Key", "hide", self.cfg.get('hide_key', 54))
         self.btn_hide = self.row_hide.get_last_child()
         self.card_conf.append(self.row_hide)
         self.card_conf.set_margin_bottom(8)
-        box.append(self.card_conf)
+        hbox_middle.append(self.card_conf)
+        box.append(hbox_middle)
         return box
 
     def build_settings_page(self):
@@ -622,12 +629,37 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.refresh_presets()
 
+    def _get_selected_sound_pack(self):
+        item = self.dd_sound_pack.get_selected_item()
+        if item is not None:
+            return item.get_string()
+        idx = self.dd_sound_pack.get_selected()
+        if idx != Gtk.INVALID_LIST_POSITION and idx < len(self.sound_packs):
+            return self.sound_packs[idx]
+        return self.sound_packs[0]
+
+    def _sync_sound_config(self, preview=False):
+        payload = {
+            'click_sounds': self.sw_sounds.get_active(),
+            'click_sound_volume': self.sliders_map['click_sound_volume'].get_value(),
+            'click_sound_pack': self._get_selected_sound_pack(),
+        }
+        self.update_config(payload)
+        if preview and payload['click_sounds']:
+            self.sound_preview.configure(
+                enabled=True,
+                volume=payload['click_sound_volume'],
+                pack=payload['click_sound_pack'],
+            )
+            self.sound_preview.play()
+
     def on_sound_pack_changed(self, dropdown, _prop):
-        idx = dropdown.get_selected()
-        if idx == Gtk.INVALID_LIST_POSITION:
+        if self._updating_sound_pack:
             return
-        pack = self.sound_packs[idx]
-        self.update_config({'click_sound_pack': pack})
+        pack = self._get_selected_sound_pack()
+        if pack == self.cfg.get('click_sound_pack'):
+            return
+        self._sync_sound_config(preview=True)
 
     def create_card(self, title):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
@@ -697,7 +729,9 @@ class MainWindow(Adw.ApplicationWindow):
         if 'click_sounds' in cfg:
             self.sw_sounds.set_active(cfg['click_sounds'])
         if 'click_sound_pack' in cfg and cfg['click_sound_pack'] in self.sound_packs:
+            self._updating_sound_pack = True
             self.dd_sound_pack.set_selected(self.sound_packs.index(cfg['click_sound_pack']))
+            self._updating_sound_pack = False
 
         if 'trigger_left' in cfg:
             self.listener.trigger_left = cfg['trigger_left']

@@ -211,7 +211,7 @@ switch:checked slider {
     opacity: 0.7;
 }
 .card dropdown {
-    min-width: 180px;
+    min-width: 220px;
 }
 .card.nopad { padding: 0; }
 .hero-card {

@@ -29,15 +29,6 @@ def resolve_sound_path(pack_name):
     if os.path.isfile(path):
         return path
 
-    fallback = os.path.join(SOUNDS_DIR, "click.mp3")
-    if os.path.isfile(fallback):
-        return fallback
-
-    for name in os.listdir(SOUNDS_DIR) if os.path.isdir(SOUNDS_DIR) else []:
-        candidate = os.path.join(SOUNDS_DIR, name, "click.mp3")
-        if os.path.isfile(candidate):
-            return candidate
-
     return None
 
 
@@ -47,7 +38,7 @@ class ClickSoundPlayer:
         self.volume = 0.8
         self.pack = list_sound_packs()[0]
         self._sound = None
-        self._loaded_pack = None
+        self._loaded_path = None
         self._lock = threading.Lock()
         self._ready = False
         self._init_mixer()
@@ -55,8 +46,9 @@ class ClickSoundPlayer:
     def _init_mixer(self):
         try:
             import pygame
-            pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=256)
-            pygame.mixer.init()
+            if not pygame.mixer.get_init():
+                pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=256)
+                pygame.mixer.init()
             pygame.mixer.set_num_channels(48)
             self._ready = True
         except Exception as err:
@@ -66,24 +58,25 @@ class ClickSoundPlayer:
         if not self._ready:
             return
 
-        if self._loaded_pack == self.pack and self._sound is not None:
-            return
-
         path = resolve_sound_path(self.pack)
         if not path:
             self._sound = None
-            self._loaded_pack = None
+            self._loaded_path = None
+            return
+
+        if path == self._loaded_path and self._sound is not None:
+            self._sound.set_volume(self.volume)
             return
 
         try:
             import pygame
             self._sound = pygame.mixer.Sound(path)
             self._sound.set_volume(self.volume)
-            self._loaded_pack = self.pack
+            self._loaded_path = path
         except Exception as err:
-            print(f"Failed to load click sound '{self.pack}': {err}")
+            print(f"Failed to load click sound '{self.pack}' from '{path}': {err}")
             self._sound = None
-            self._loaded_pack = None
+            self._loaded_path = None
 
     def configure(self, enabled=None, volume=None, pack=None):
         with self._lock:
@@ -91,11 +84,10 @@ class ClickSoundPlayer:
                 self.enabled = bool(enabled)
             if volume is not None:
                 self.volume = max(0.0, min(1.0, float(volume) / 100.0))
-                if self._sound is not None:
-                    self._sound.set_volume(self.volume)
-            if pack is not None and pack != self.pack:
+            if pack is not None:
                 self.pack = pack
-                self._loaded_pack = None
+                self._sound = None
+                self._loaded_path = None
             self._load()
 
     def play(self):
