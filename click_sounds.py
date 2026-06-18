@@ -3,18 +3,35 @@ import threading
 
 SOUNDS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sounds")
 
+CLICK_CANDIDATES = (
+    "click.wav",
+    "click.mp3",
+    "left-down.wav",
+    "left-down.mp3",
+    "primary_down.wav",
+    "primary_down.mp3",
+)
+
+
+def _find_click_file(directory):
+    for name in CLICK_CANDIDATES:
+        path = os.path.join(directory, name)
+        if os.path.isfile(path):
+            return path
+    return None
+
 
 def list_sound_packs():
     packs = []
     if not os.path.isdir(SOUNDS_DIR):
         return ["Default"]
 
-    if os.path.isfile(os.path.join(SOUNDS_DIR, "click.mp3")):
+    if _find_click_file(SOUNDS_DIR):
         packs.append("Default")
 
     for name in sorted(os.listdir(SOUNDS_DIR)):
         pack_dir = os.path.join(SOUNDS_DIR, name)
-        if os.path.isdir(pack_dir) and os.path.isfile(os.path.join(pack_dir, "click.mp3")):
+        if os.path.isdir(pack_dir) and _find_click_file(pack_dir):
             packs.append(name)
 
     return packs or ["Default"]
@@ -22,14 +39,9 @@ def list_sound_packs():
 
 def resolve_sound_path(pack_name):
     if pack_name == "Default":
-        path = os.path.join(SOUNDS_DIR, "click.mp3")
-    else:
-        path = os.path.join(SOUNDS_DIR, pack_name, "click.mp3")
+        return _find_click_file(SOUNDS_DIR)
 
-    if os.path.isfile(path):
-        return path
-
-    return None
+    return _find_click_file(os.path.join(SOUNDS_DIR, pack_name))
 
 
 class ClickSoundPlayer:

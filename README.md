@@ -8,7 +8,7 @@
 
 **Moonlight-Vanity** is a fork of [Moonlight](https://github.com/oNxZero/Moonlight) built for simple mouse auto-clicking. It keeps the same kernel-level input engine, humanized timing, and clean UI — but strips out keyboard mode, W-Tap, and Blockhit entirely.
 
-It **should** work out of the box on both Wayland (Hyprland, GNOME, KDE) and X11. It also features built-in **click sounds** with swappable sound packs inspired by [clicket](https://github.com/spreyo/clicket).
+It **should** work out of the box on both Wayland (Hyprland, GNOME, KDE) and X11. It also features built-in **click sounds** with swappable mouse sound packs.
 
 ---
 
@@ -96,18 +96,18 @@ The interface is split into simple controls:
 
 ## 🔊 Sound Packs
 
-Sound packs live in the `./sounds/` directory. Each pack is a folder containing a `click.mp3` file.
+Sound packs live in the `./sounds/` directory. Each pack is a folder containing a `click.wav` or `click.mp3` file.
 
 To add your own pack:
 
 ```bash
 mkdir -p sounds/MyCustomPack
-cp /path/to/your/click.mp3 sounds/MyCustomPack/click.mp3
+cp /path/to/your/click.wav sounds/MyCustomPack/click.wav
 ```
 
 Restart the app and your new pack will appear in the dropdown.
 
-Default packs are sourced from [clicket](https://github.com/spreyo/clicket).
+Bundled mouse sounds are sourced from [Keyboard Sounds Pro](https://github.com/keyboard-sounds/keyboardsounds-pro) (MIT License). See `sounds/ATTRIBUTION.md` for details.
 
 ---
 
