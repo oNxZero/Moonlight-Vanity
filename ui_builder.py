@@ -188,8 +188,13 @@ class MainWindow(Adw.ApplicationWindow):
         hero.append(self.box_master)
         box.append(hero)
 
+        hbox_middle = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        hbox_middle.set_homogeneous(True)
+
         card_act = self.create_card("ACTIVATION")
 
+        row_trig = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        lbl_trig = Gtk.Label(label="Trigger Type", xalign=0, hexpand=True)
         self.seg_trig = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.seg_trig.set_css_classes(["segmented-box", "pos-left"])
         self.seg_trig.set_homogeneous(True)
@@ -213,7 +218,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_trig_hold.set_focusable(False)
         self.seg_trig.append(self.btn_trig_tog)
         self.seg_trig.append(self.btn_trig_hold)
-        card_act.append(self.create_control_row("Trigger Type", self.seg_trig))
+        row_trig.append(lbl_trig)
+        row_trig.append(self.seg_trig)
+        card_act.append(row_trig)
         card_act.append(self.create_sep())
 
         self.row_bind_left = self.create_bind_row("Left Click Trigger", "trigger_left", self.cfg.get('trigger_left', 64))
@@ -221,25 +228,59 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.row_bind_right = self.create_bind_row("Right Click Trigger", "trigger_right", self.cfg.get('trigger_right', 65))
         card_act.append(self.row_bind_right)
-        box.append(card_act)
+
+        hbox_middle.append(card_act)
+
+        self.card_sounds = self.create_card("CLICK SOUNDS")
+
+        row_sounds = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        lbl_sounds = Gtk.Label(label="Enabled", xalign=0, hexpand=True)
+        self.sw_sounds = Gtk.Switch()
+        self.sw_sounds.set_active(self.cfg.get('click_sounds', True))
+        self.sw_sounds.set_valign(Gtk.Align.CENTER)
+        self.sw_sounds.connect("notify::active", lambda w, p: self._sync_sound_config(preview=True))
+        row_sounds.append(lbl_sounds)
+        row_sounds.append(self.sw_sounds)
+        self.card_sounds.append(row_sounds)
+
+        row_pack = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        lbl_pack = Gtk.Label(label="Sound Pack", xalign=0, hexpand=True)
+        self.sound_packs = list_sound_packs()
+        pack_model = Gtk.StringList()
+        for pack_name in self.sound_packs:
+            pack_model.append(pack_name)
+        self.dd_sound_pack = Gtk.DropDown(model=pack_model)
+        self.dd_sound_pack.set_valign(Gtk.Align.CENTER)
+        saved_pack = self.cfg.get('click_sound_pack', self.sound_packs[0])
+        if saved_pack in self.sound_packs:
+            self._updating_sound_pack = True
+            self.dd_sound_pack.set_selected(self.sound_packs.index(saved_pack))
+            self._updating_sound_pack = False
+        self.dd_sound_pack.connect("notify::selected", self.on_sound_pack_changed)
+        row_pack.append(lbl_pack)
+        row_pack.append(self.dd_sound_pack)
+        self.card_sounds.append(row_pack)
+        self.card_sounds.append(self.create_sep())
+
+        self.add_slider(self.card_sounds, "Volume %", 0, 100, self.cfg.get('click_sound_volume', 80.0), 5, lambda v: self._sync_sound_config(), 'click_sound_volume')
+        hbox_middle.append(self.card_sounds)
+        box.append(hbox_middle)
 
         self.card_conf = self.create_card("CONFIGURATION")
 
-        cps_grid = Gtk.Grid(column_spacing=24, row_spacing=0)
-        cps_grid.set_column_homogeneous(True)
-        self.box_cps_left, self.lbl_cps_left = self.add_slider(cps_grid, "Left Click CPS", 1.0, 20.0, self.cfg.get('cps_left', 12.0), 0.5, lambda v: self.update_config({'cps_left': v}), 'cps_left')
-        self.box_cps_right, self.lbl_cps_right = self.add_slider(cps_grid, "Right Click CPS", 1.0, 20.0, self.cfg.get('cps_right', 12.0), 0.5, lambda v: self.update_config({'cps_right': v}), 'cps_right')
-        self.box_cps_left.set_hexpand(True)
-        self.box_cps_right.set_hexpand(True)
-        cps_grid.attach(self.box_cps_left, 0, 0, 1, 1)
-        cps_grid.attach(self.box_cps_right, 1, 0, 1, 1)
-        self.card_conf.append(cps_grid)
-        self.card_conf.append(self.create_sep())
+        self.box_cps_left, self.lbl_cps_left = self.add_slider(self.card_conf, "Left Click CPS", 1.0, 20.0, self.cfg.get('cps_left', 12.0), 0.5, lambda v: self.update_config({'cps_left': v}), 'cps_left')
+        self.sep_cps_right = self.create_sep()
+        self.card_conf.append(self.sep_cps_right)
+
+        self.box_cps_right, self.lbl_cps_right = self.add_slider(self.card_conf, "Right Click CPS", 1.0, 20.0, self.cfg.get('cps_right', 12.0), 0.5, lambda v: self.update_config({'cps_right': v}), 'cps_right')
 
         self.sep_jitter = self.create_sep()
-        self.box_jitter, _ = self.add_slider(self.card_conf, "Jitter Strength", 0.0, 10.0, self.cfg.get('jitter', 2.0), 0.5, lambda v: self.update_config({'jitter': v}), 'jitter')
         self.card_conf.append(self.sep_jitter)
+        self.box_jitter, _ = self.add_slider(self.card_conf, "Jitter Strength", 0.0, 10.0, self.cfg.get('jitter', 2.0), 0.5, lambda v: self.update_config({'jitter': v}), 'jitter')
+        self.card_conf.append(self.create_sep())
 
+        row_rand = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        lbl_rand = Gtk.Label(label="Humanization", xalign=0, hexpand=True)
         self.seg_rand = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.seg_rand.set_css_classes(["segmented-box", "pos-left"])
         self.seg_rand.set_homogeneous(True)
@@ -263,30 +304,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_blatant.set_focusable(False)
         self.seg_rand.append(self.btn_legit)
         self.seg_rand.append(self.btn_blatant)
-        self.card_conf.append(self.create_control_row("Humanization", self.seg_rand))
-        self.card_conf.append(self.create_sep())
+        row_rand.append(lbl_rand)
+        row_rand.append(self.seg_rand)
+        self.card_conf.append(row_rand)
 
-        self.sw_sounds = Gtk.Switch()
-        self.sw_sounds.set_active(self.cfg.get('click_sounds', True))
-        self.sw_sounds.set_valign(Gtk.Align.CENTER)
-        self.sw_sounds.connect("notify::active", lambda w, p: self._sync_sound_config(preview=True))
-        self.card_conf.append(self.create_control_row("Click Sounds", self.sw_sounds, control_width=0))
-
-        self.sound_packs = list_sound_packs()
-        pack_model = Gtk.StringList()
-        for pack_name in self.sound_packs:
-            pack_model.append(pack_name)
-        self.dd_sound_pack = Gtk.DropDown(model=pack_model)
-        self.dd_sound_pack.set_valign(Gtk.Align.CENTER)
-        saved_pack = self.cfg.get('click_sound_pack', self.sound_packs[0])
-        if saved_pack in self.sound_packs:
-            self._updating_sound_pack = True
-            self.dd_sound_pack.set_selected(self.sound_packs.index(saved_pack))
-            self._updating_sound_pack = False
-        self.dd_sound_pack.connect("notify::selected", self.on_sound_pack_changed)
-        self.card_conf.append(self.create_control_row("Sound Pack", self.dd_sound_pack))
-
-        self.add_slider(self.card_conf, "Sound Volume %", 0, 100, self.cfg.get('click_sound_volume', 80.0), 5, lambda v: self._sync_sound_config(), 'click_sound_volume')
         self.card_conf.append(self.create_sep())
 
         self.row_hide = self.create_bind_row("Hide Window Key", "hide", self.cfg.get('hide_key', 54))
@@ -643,21 +664,8 @@ class MainWindow(Adw.ApplicationWindow):
             return
         self._sync_sound_config(preview=True)
 
-    def create_control_row(self, title, widget, control_width=200):
-        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        row.set_css_classes(["control-row"])
-        lbl = Gtk.Label(label=title, xalign=0, hexpand=True)
-        lbl.set_css_classes(["row-label"])
-        widget.set_valign(Gtk.Align.CENTER)
-        widget.set_halign(Gtk.Align.END)
-        if control_width:
-            widget.set_size_request(control_width, -1)
-        row.append(lbl)
-        row.append(widget)
-        return row
-
     def create_card(self, title):
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box.set_css_classes(["card"])
         lbl = Gtk.Label(label=title, xalign=0)
         lbl.set_css_classes(["h2"])
@@ -698,15 +706,11 @@ class MainWindow(Adw.ApplicationWindow):
 
     def create_bind_row(self, title, mode, code):
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        row.set_css_classes(["control-row"])
         lbl = Gtk.Label(label=title, xalign=0, hexpand=True)
-        lbl.set_css_classes(["row-label"])
 
         name = self.listener.get_nice_name(code)
         btn = Gtk.Button(label=name)
         btn.set_css_classes(["trigger-btn"])
-        btn.set_halign(Gtk.Align.END)
-        btn.set_size_request(200, -1)
         btn.connect("clicked", lambda x: self.on_bind_click(mode))
 
         if mode == "trigger_left":
