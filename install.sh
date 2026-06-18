@@ -14,10 +14,10 @@ if [ "${EUID:-$(id -u)}" -eq 0 ]; then
 fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_DIR="$HOME/Moonlight"
+TARGET_DIR="$HOME/Moonlight-Vanity"
 
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}       Moonlight Setup Assistant         ${NC}"
+echo -e "${BLUE}       Moonlight-Vanity Setup Assistant    ${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
 if [ "${1:-}" != "--no-copy" ] && [ "$SCRIPT_DIR" != "$TARGET_DIR" ]; then
@@ -89,9 +89,9 @@ echo -e "${GREEN}[5/5] Registering application...${NC}"
 APP_DIR="$HOME/.local/share/applications"
 mkdir -p "$APP_DIR"
 
-cat > "$APP_DIR/Moonlight.desktop" <<EOF
+cat > "$APP_DIR/Moonlight-Vanity.desktop" <<EOF
 [Desktop Entry]
-Name=Moonlight
+Name=Moonlight-Vanity
 Comment=Auto Clicker
 Exec=$TARGET_DIR/start.sh
 Icon=$TARGET_DIR/icon.svg
@@ -101,7 +101,7 @@ Categories=Utility;Accessibility;
 StartupNotify=true
 EOF
 
-chmod +x "$APP_DIR/Moonlight.desktop"
+chmod +x "$APP_DIR/Moonlight-Vanity.desktop"
 command -v update-desktop-database >/dev/null && update-desktop-database "$APP_DIR" || true
 
 echo -e "${GREEN}INSTALLATION COMPLETE${NC}"

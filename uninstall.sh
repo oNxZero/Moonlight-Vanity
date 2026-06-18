@@ -6,20 +6,20 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-TARGET_DIR="$HOME/Moonlight"
+TARGET_DIR="$HOME/Moonlight-Vanity"
 CONFIG_DIR="$HOME/.config/Moonlight"
-DESKTOP_FILE="$HOME/.local/share/applications/Moonlight.desktop"
-ICON_FILE="$HOME/.local/share/icons/hicolor/scalable/apps/com.moonlight.final.svg"
+DESKTOP_FILE="$HOME/.local/share/applications/Moonlight-Vanity.desktop"
+ICON_FILE="$HOME/.local/share/icons/hicolor/scalable/apps/com.moonlight.vanity.svg"
 RULE_FILE="/etc/udev/rules.d/99-moonlight.rules"
 
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}       Moonlight Uninstaller             ${NC}"
+echo -e "${BLUE}     Moonlight-Vanity Uninstaller          ${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
 echo -e "${GREEN}[1/5] Removing Desktop Shortcut...${NC}"
 if [ -f "$DESKTOP_FILE" ]; then
     rm -f "$DESKTOP_FILE"
-    echo "Removed Moonlight.desktop"
+    echo "Removed Moonlight-Vanity.desktop"
 else
     echo -e "${YELLOW}No desktop entry found (Skipping).${NC}"
 fi
@@ -27,9 +27,9 @@ fi
 echo -e "${GREEN}[2/5] Removing App Icon...${NC}"
 if [ -f "$ICON_FILE" ]; then
     rm -f "$ICON_FILE"
-    echo "Removed com.moonlight.final.svg"
+    echo "Removed com.moonlight.vanity.svg"
     if command -v gtk4-update-icon-cache >/dev/null; then
-        gtk4-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor/"
+        gtk4-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor/" 2>/dev/null || true
     fi
 else
     echo -e "${YELLOW}No icon found (Skipping).${NC}"

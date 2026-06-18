@@ -64,7 +64,7 @@ class ClickerChannel:
 
         target_cps = self.cps + self.current_variance
         roughness = random.gauss(0, 1.5)
-        final_cps = max(6.0, min(22.0, target_cps + roughness))
+        final_cps = max(1.0, min(self.cps, target_cps + roughness))
         return 1.0 / final_cps
 
 class GhostEngine:

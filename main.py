@@ -46,18 +46,23 @@ def install_app_icon():
         icon_dir = os.path.expanduser("~/.local/share/icons/hicolor/scalable/apps")
         os.makedirs(icon_dir, exist_ok=True)
 
-        dest_path = os.path.join(icon_dir, "com.moonlight.final.svg")
+        dest_path = os.path.join(icon_dir, "com.moonlight.vanity.svg")
         source_path = os.path.join(os.path.dirname(__file__), "icon.svg")
 
-        if os.path.exists(source_path):
-            with open(source_path, "r") as src:
-                icon_content = src.read()
-            with open(dest_path, "w") as dest:
-                dest.write(icon_content)
-
-            os.system("gtk4-update-icon-cache -f -t " + os.path.expanduser("~/.local/share/icons/hicolor/"))
-        else:
+        if not os.path.exists(source_path):
             print("Warning: icon.svg not found. Taskbar icon may be missing.")
+            return
+
+        with open(source_path, "r") as src:
+            icon_content = src.read()
+
+        if os.path.exists(dest_path):
+            with open(dest_path, "r") as dest:
+                if dest.read() == icon_content:
+                    return
+
+        with open(dest_path, "w") as dest:
+            dest.write(icon_content)
 
     except Exception as e:
         print(f"Icon installation warning: {e}")
@@ -281,7 +286,7 @@ class MoonlightApp(Adw.Application):
 
 if __name__ == "__main__":
     sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-    app = MoonlightApp(application_id="com.moonlight.final")
+    app = MoonlightApp(application_id="com.moonlight.vanity")
     try:
         app.run(sys.argv)
     except KeyboardInterrupt:
