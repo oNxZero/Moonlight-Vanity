@@ -210,6 +210,9 @@ switch:checked slider {
 .card.card-disabled label.h2 {
     opacity: 0.7;
 }
+.card dropdown {
+    min-width: 180px;
+}
 .card.nopad { padding: 0; }
 .hero-card {
     background: linear-gradient(135deg, @mantle 0%, @surface0 100%);

@@ -8,22 +8,19 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gdk
 
+from click_sounds import list_sound_packs
+
 MOON_SVG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 <svg width="64px" height="64px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg">
     <path d="M12.0000002,2.0000002 C12.2855146,2.0000002 12.5649479,2.02237834 12.8373396,2.06546059 C8.97157672,2.67699175 6.00000016,6.02897621 6.00000016,10 C6.00000016,14.4182782 9.58172216,18.0000002 14.0000002,18.0000002 C17.9710241,18.0000002 21.3230086,15.0284236 21.9345398,11.1626607 C21.9776221,11.4350524 22.0000002,11.7144857 22.0000002,12.0000002 C22.0000002,17.5228477 17.5228477,22.0000002 12.0000002,22.0000002 C6.47715266,22.0000002 2.00000016,17.5228477 2.00000016,12.0000002 C2.00000016,6.47715266 6.47715266,2.0000002 12.0000002,2.0000002 Z" fill="{0}" stroke="none"></path>
 </svg>
 """
 
-ASSIST_FEATURES_ENABLED = False
-ASSIST_CONFIG_KEYS = frozenset({
-    'assist_wtap', 'assist_wtap_chance', 'assist_blockhit', 'assist_blockhit_chance',
-})
-
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, app, backend_toggle, backend_config, backend_suspend, listener, initial_config, preset_manager, theme_cb, preset_cb):
         super().__init__(application=app, title="Moonlight")
 
-        self.set_default_size(780, 720)
+        self.set_default_size(520, 720)
         self.set_resizable(False)
 
         self.backend_toggle = backend_toggle
@@ -44,9 +41,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.last_focus_time = 0
         self.is_binding = False
         self.last_bind_time = 0
-
-        self.saved_target_code = self.cfg.get('target_btn', -1)
-        self.saved_target_name = listener.get_nice_name(self.saved_target_code)
 
         self.connect("notify::is-active", self.on_window_focus_change)
 
@@ -112,8 +106,6 @@ class MainWindow(Adw.ApplicationWindow):
         root.append(self.stack)
 
         self.update_ui_from_config(self.cfg)
-        self.refresh_ui_mode()
-
 
         base_theme = self.preset_mgr.active_theme_name
         self.theme_cb(base_theme, is_custom=False)
@@ -124,33 +116,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.refresh_color_pickers()
         self.update_logo_visuals()
 
-    def refresh_ui_mode(self):
-        is_mouse = self.btn_mode_mouse.get_active()
-        self.card_assist.set_visible(is_mouse)
-
-        if is_mouse:
-            self.row_bind_right.set_visible(True)
-            self.box_cps_right.set_visible(True)
-            self.sep_cps_right.set_visible(True)
-            self.box_jitter.set_visible(True)
-            self.sep_jitter.set_visible(True)
-            self.row_target.set_visible(False)
-            self.lbl_bind_left.set_label("Left Click Trigger")
-            self.lbl_cps_left.set_label("Left Click CPS")
-        else:
-            self.row_target.set_visible(True)
-            self.row_bind_right.set_visible(False)
-            self.box_cps_right.set_visible(False)
-            self.sep_cps_right.set_visible(False)
-            self.box_jitter.set_visible(False)
-            self.sep_jitter.set_visible(False)
-            self.lbl_bind_left.set_label("Trigger Key")
-            self.lbl_cps_left.set_label("Key Tap CPS")
-            self.btn_target.set_label(self.saved_target_name)
-
     def update_config(self, new_data):
-        if not ASSIST_FEATURES_ENABLED:
-            new_data = {k: v for k, v in new_data.items() if k not in ASSIST_CONFIG_KEYS}
         self.cfg.update(new_data)
         self._backend_config_func(new_data)
         if self.stack.get_visible_child_name() == "settings":
@@ -224,35 +190,7 @@ class MainWindow(Adw.ApplicationWindow):
         hbox_middle.set_homogeneous(True)
 
         card_act = self.create_card("ACTIVATION")
-        row_mode = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        lbl_appmode = Gtk.Label(label="Target Mode", xalign=0, hexpand=True)
-        self.seg_mode = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
-        self.seg_mode.set_css_classes(["segmented-box", "pos-left"])
-        self.seg_mode.set_homogeneous(True)
-        self.btn_mode_mouse = Gtk.ToggleButton(label="Mouse")
-        self.btn_mode_mouse.set_css_classes(["segment-btn"])
-
-        if self.cfg.get('mode') == 'keyboard':
-            self.btn_mode_mouse.set_active(False)
-            self.seg_mode.add_css_class("pos-right")
-            self.seg_mode.remove_css_class("pos-left")
-        else:
-            self.btn_mode_mouse.set_active(True)
-            self.seg_mode.add_css_class("pos-left")
-            self.seg_mode.remove_css_class("pos-right")
-
-        self.btn_mode_mouse.set_focusable(False)
-        self.btn_mode_mouse.connect("toggled", self.on_app_mode_changed)
-        self.btn_mode_kb = Gtk.ToggleButton(label="Keyboard")
-        self.btn_mode_kb.set_css_classes(["segment-btn"])
-        self.btn_mode_kb.set_group(self.btn_mode_mouse)
-        self.btn_mode_kb.set_focusable(False)
-        self.seg_mode.append(self.btn_mode_mouse)
-        self.seg_mode.append(self.btn_mode_kb)
-        row_mode.append(lbl_appmode)
-        row_mode.append(self.seg_mode)
-        card_act.append(row_mode)
-        card_act.append(self.create_sep())
+        card_act.set_hexpand(True)
 
         row_trig = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         lbl_trig = Gtk.Label(label="Trigger Type", xalign=0, hexpand=True)
@@ -291,51 +229,12 @@ class MainWindow(Adw.ApplicationWindow):
         card_act.append(self.row_bind_right)
 
         hbox_middle.append(card_act)
-
-        self.card_assist = self.create_card("ASSIST")
-        row_wtap = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        lbl_wtap = Gtk.Label(label="W-Tap", xalign=0, hexpand=True)
-        self.sw_wtap = Gtk.Switch()
-        self.sw_wtap.set_active(self.cfg.get('assist_wtap', False))
-        self.sw_wtap.set_valign(Gtk.Align.CENTER)
-        self.sw_wtap.connect("notify::active", lambda w, p: self.update_config({'assist_wtap': w.get_active()}))
-        row_wtap.append(lbl_wtap)
-        row_wtap.append(self.sw_wtap)
-        self.card_assist.append(row_wtap)
-
-        self.add_slider(self.card_assist, "W-Tap Chance %", 0, 100, self.cfg.get('assist_wtap_chance', 5.0), 1, lambda v: self.update_config({'assist_wtap_chance': v}), 'assist_wtap_chance')
-        self.card_assist.append(self.create_sep())
-
-        row_bh = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        lbl_bh = Gtk.Label(label="Blockhit", xalign=0, hexpand=True)
-        self.sw_bh = Gtk.Switch()
-        self.sw_bh.set_active(self.cfg.get('assist_blockhit', False))
-        self.sw_bh.set_valign(Gtk.Align.CENTER)
-        self.sw_bh.connect("notify::active", lambda w, p: self.update_config({'assist_blockhit': w.get_active()}))
-        row_bh.append(lbl_bh)
-        row_bh.append(self.sw_bh)
-        self.card_assist.append(row_bh)
-
-        self.add_slider(self.card_assist, "Blockhit Chance %", 0, 100, self.cfg.get('assist_blockhit_chance', 10.0), 1, lambda v: self.update_config({'assist_blockhit_chance': v}), 'assist_blockhit_chance')
-        if not ASSIST_FEATURES_ENABLED:
-            self._disable_assist_section()
-        hbox_middle.append(self.card_assist)
         box.append(hbox_middle)
 
         self.card_conf = self.create_card("CONFIGURATION")
-        self.row_target = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        lbl_target = Gtk.Label(label="Target Key", xalign=0, hexpand=True)
-        self.btn_target = Gtk.Button(label="Select...")
-        self.btn_target.set_css_classes(["trigger-btn"])
-        self.btn_target.set_focusable(False)
-        self.btn_target.connect("clicked", lambda x: self.on_bind_click("target"))
-        self.row_target.append(lbl_target)
-        self.row_target.append(self.btn_target)
-        self.card_conf.append(self.row_target)
 
         self.box_cps_left, self.lbl_cps_left = self.add_slider(self.card_conf, "Left Click CPS", 1.0, 20.0, self.cfg.get('cps_left', 12.0), 0.5, lambda v: self.update_config({'cps_left': v}), 'cps_left')
-        self.sep_cps_right = self.create_sep()
-        self.card_conf.append(self.sep_cps_right)
+        self.card_conf.append(self.create_sep())
 
         self.box_cps_right, self.lbl_cps_right = self.add_slider(self.card_conf, "Right Click CPS", 1.0, 20.0, self.cfg.get('cps_right', 12.0), 0.5, lambda v: self.update_config({'cps_right': v}), 'cps_right')
 
@@ -372,7 +271,33 @@ class MainWindow(Adw.ApplicationWindow):
         row_rand.append(lbl_rand)
         row_rand.append(self.seg_rand)
         self.card_conf.append(row_rand)
+        self.card_conf.append(self.create_sep())
 
+        row_sounds = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        lbl_sounds = Gtk.Label(label="Click Sounds", xalign=0, hexpand=True)
+        self.sw_sounds = Gtk.Switch()
+        self.sw_sounds.set_active(self.cfg.get('click_sounds', True))
+        self.sw_sounds.set_valign(Gtk.Align.CENTER)
+        self.sw_sounds.connect("notify::active", lambda w, p: self.update_config({'click_sounds': w.get_active()}))
+        row_sounds.append(lbl_sounds)
+        row_sounds.append(self.sw_sounds)
+        self.card_conf.append(row_sounds)
+
+        row_pack = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        lbl_pack = Gtk.Label(label="Sound Pack", xalign=0, hexpand=True)
+        self.sound_packs = list_sound_packs()
+        pack_model = Gtk.StringList.new(self.sound_packs)
+        self.dd_sound_pack = Gtk.DropDown(model=pack_model)
+        self.dd_sound_pack.set_valign(Gtk.Align.CENTER)
+        saved_pack = self.cfg.get('click_sound_pack', self.sound_packs[0])
+        if saved_pack in self.sound_packs:
+            self.dd_sound_pack.set_selected(self.sound_packs.index(saved_pack))
+        self.dd_sound_pack.connect("notify::selected", self.on_sound_pack_changed)
+        row_pack.append(lbl_pack)
+        row_pack.append(self.dd_sound_pack)
+        self.card_conf.append(row_pack)
+
+        self.add_slider(self.card_conf, "Sound Volume %", 0, 100, self.cfg.get('click_sound_volume', 80.0), 5, lambda v: self.update_config({'click_sound_volume': v}), 'click_sound_volume')
         self.card_conf.append(self.create_sep())
 
         self.row_hide = self.create_bind_row("Hide Window Key", "hide", self.cfg.get('hide_key', 54))
@@ -697,16 +622,12 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.refresh_presets()
 
-    def _disable_assist_section(self):
-        self.card_assist.add_css_class("card-disabled")
-        self.card_assist.set_sensitive(False)
-        self.card_assist.set_opacity(0.45)
-        self.sw_wtap.set_active(False)
-        self.sw_bh.set_active(False)
-        for key in ('assist_wtap_chance', 'assist_blockhit_chance'):
-            scale = self.sliders_map.get(key)
-            if scale:
-                scale.set_sensitive(False)
+    def on_sound_pack_changed(self, dropdown, _prop):
+        idx = dropdown.get_selected()
+        if idx == Gtk.INVALID_LIST_POSITION:
+            return
+        pack = self.sound_packs[idx]
+        self.update_config({'click_sound_pack': pack})
 
     def create_card(self, title):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
@@ -773,12 +694,10 @@ class MainWindow(Adw.ApplicationWindow):
         for key, scale in self.sliders_map.items():
             if key in cfg: scale.set_value(float(cfg[key]))
 
-        if ASSIST_FEATURES_ENABLED:
-            if 'assist_wtap' in cfg: self.sw_wtap.set_active(cfg['assist_wtap'])
-            if 'assist_blockhit' in cfg: self.sw_bh.set_active(cfg['assist_blockhit'])
-        else:
-            self.sw_wtap.set_active(False)
-            self.sw_bh.set_active(False)
+        if 'click_sounds' in cfg:
+            self.sw_sounds.set_active(cfg['click_sounds'])
+        if 'click_sound_pack' in cfg and cfg['click_sound_pack'] in self.sound_packs:
+            self.dd_sound_pack.set_selected(self.sound_packs.index(cfg['click_sound_pack']))
 
         if 'trigger_left' in cfg:
             self.listener.trigger_left = cfg['trigger_left']
@@ -789,17 +708,6 @@ class MainWindow(Adw.ApplicationWindow):
         if 'hide_key' in cfg:
             self.listener.hide_key = cfg['hide_key']
             self.btn_hide.set_label(self.listener.get_nice_name(cfg['hide_key']))
-        if 'target_btn' in cfg:
-             self.saved_target_code = cfg['target_btn']
-             self.saved_target_name = self.listener.get_nice_name(self.saved_target_code)
-             self.btn_target.set_label(self.saved_target_name)
-
-        if 'mode' in cfg:
-            is_mouse = (cfg['mode'] == 'mouse')
-            self.listener.set_app_mode(cfg['mode'])
-            self.btn_mode_mouse.set_active(is_mouse)
-            self.btn_mode_kb.set_active(not is_mouse)
-            self.refresh_ui_mode()
 
         if 'rand' in cfg:
             is_legit = (cfg['rand'] == 1)
@@ -866,24 +774,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_master_visuals(active_left or active_right)
         self.btn_master_off.handler_unblock_by_func(self.on_master_toggled)
 
-    def on_app_mode_changed(self, btn):
-        mode = "mouse" if self.btn_mode_mouse.get_active() else "keyboard"
-        self.update_config({'mode': mode})
-        if mode == "keyboard":
-            self.update_config({'target_btn': self.saved_target_code})
-        else:
-            self.update_config({'target_btn': -1})
-        self.listener.set_app_mode(mode)
-
-        if mode == "mouse":
-            self.seg_mode.add_css_class("pos-left")
-            self.seg_mode.remove_css_class("pos-right")
-        else:
-            self.seg_mode.add_css_class("pos-right")
-            self.seg_mode.remove_css_class("pos-left")
-
-        self.refresh_ui_mode()
-
     def on_trig_mode_changed(self, btn):
         mode = "toggle" if self.btn_trig_tog.get_active() else "hold"
         self.listener.set_trigger_mode(mode)
@@ -914,7 +804,6 @@ class MainWindow(Adw.ApplicationWindow):
         btn = None
         if mode == "trigger_left": btn = self.btn_bind_left
         elif mode == "trigger_right": btn = self.btn_bind_right
-        elif mode == "target": btn = self.btn_target
         elif mode == "hide": btn = self.btn_hide
         if btn: btn.set_label("Press Button / Key")
         self.listener.start_rebind(mode)
@@ -932,11 +821,5 @@ class MainWindow(Adw.ApplicationWindow):
         elif mode == "hide":
             btn = self.btn_hide
             self.cfg['hide_key'] = code
-        elif mode == "target":
-            btn = self.btn_target
-            self.saved_target_code = code
-            self.saved_target_name = label
-            self.cfg['target_btn'] = code
-            self.update_config({'target_btn': code})
         if btn: btn.set_label(label)
         self.refresh_presets()

@@ -41,16 +41,19 @@ echo -e "${GREEN}[1/5] Installing system dependencies...${NC}"
 if command -v dnf >/dev/null; then
     sudo dnf install -y \
         python3-pip python3-gobject gtk4 libadwaita \
-        python3-devel gcc pkgconf-pkg-config gobject-introspection-devel
+        python3-devel gcc pkgconf-pkg-config gobject-introspection-devel \
+        SDL2 SDL2_mixer
 elif command -v apt-get >/dev/null; then
     sudo apt-get update
     sudo apt-get install -y \
         python3-pip python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 \
-        python3-dev gcc pkg-config gobject-introspection
+        python3-dev gcc pkg-config gobject-introspection \
+        libsdl2-2.0-0 libsdl2-mixer-2.0-0
 elif command -v pacman >/dev/null; then
     sudo pacman -S --noconfirm \
         python-pip python-gobject gtk4 libadwaita \
-        python gcc make pkgconf gobject-introspection
+        python gcc make pkgconf gobject-introspection \
+        sdl2 sdl2_mixer
 else
     echo -e "${RED}Unsupported distro.${NC}"
     exit 1

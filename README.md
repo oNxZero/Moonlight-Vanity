@@ -1,4 +1,4 @@
-# Moonlight-Vanity
+# 🌙 Moonlight-Vanity
 
 > **A stripped-down, kernel-level auto clicker for Linux — left and right click only.**
 
@@ -6,15 +6,13 @@
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20(Wayland%20%7C%20X11)-lightgrey)
 
-**Moonlight-Vanity** is a fork of [Moonlight](https://github.com/oNxZero/Moonlight) built for simple mouse auto-clicking. It keeps the same kernel-level input engine, humanized timing, and clean UI — but removes PvP assist features entirely.
+**Moonlight-Vanity** is a fork of [Moonlight](https://github.com/oNxZero/Moonlight) built for simple mouse auto-clicking. It keeps the same kernel-level input engine, humanized timing, and clean UI — but strips out keyboard mode, W-Tap, and Blockhit entirely.
 
-This build supports **left click** and **right click** only. W-Tap, S-Tap, and Blockhit are disabled in both the UI and backend, so they cannot be enabled or used.
-
-It should work out of the box on both Wayland (Hyprland, GNOME, KDE) and X11.
+It **should** work out of the box on both Wayland (Hyprland, GNOME, KDE) and X11. It also features built-in **click sounds** with swappable sound packs inspired by [clicket](https://github.com/spreyo/clicket).
 
 ---
 
-## Demo
+## 📸 Demo
 
 <p align="center">
   <img src="./assets/demo.gif" alt="Moonlight-Vanity UI Demo" width="600">
@@ -22,24 +20,23 @@ It should work out of the box on both Wayland (Hyprland, GNOME, KDE) and X11.
 
 ---
 
-## Features
+## 🔥 Features
 
-* **Kernel-Level Input:** Creates a virtual device via `/dev/uinput`. To the OS and games, it looks like a real physical mouse.
+* **Kernel-Level Input:** Instead of sending software signals, Moonlight-Vanity creates a virtual device in `/dev/uinput`. To the OS and games, it looks identical to a real physical mouse.
 * **Left & Right Click:** Dedicated triggers, CPS sliders, and toggle/hold modes for both mouse buttons.
-* **Process Cloaking:** The background daemon renames itself to `kworker/u12:0` so it blends into `htop` and task managers.
-* **Biological Timing:** Gaussian timing with cruising, burst, and tired states to mimic human click patterns.
-* **Asynchronous Architecture:** The click engine runs in a separate process from the UI, so the click rate never stutters when you move the window.
-
-### What is disabled
-
-The **ASSIST** panel (W-Tap and Blockhit) is grayed out and hard-disabled. This is intentional — Vanity is meant to stay a plain auto clicker.
+* **Click Sounds:** Plays a mouse click sound on every auto-click. Choose from multiple sound packs and adjust volume in the UI.
+* **Process Cloaking:** The background daemon actively renames itself to `kworker/u12:0` (a common kernel thread) so it blends into `htop` and task managers.
+* **Biological Timing:** It doesn't just use random numbers. The engine cycles through "cruising", "burst", and "tired" states using Gaussian distribution to mimic actual human muscle fatigue and reaction speeds.
+* **Asynchronous Architecture:** The click engine runs in a completely separate process from the UI. You can drag the window around or minimize it, and the click rate will never stutter.
 
 ---
 
-## Installation
+## 🚀 Installation
+
+Moonlight-Vanity comes with a smart installer that handles system dependencies, creates the necessary permissions, and adds the app to your desktop menu.
 
 ```bash
-# Clone this repository
+# Clone the repository
 git clone https://github.com/oNxZero/Moonlight-Vanity.git
 
 # Enter the directory
@@ -52,80 +49,100 @@ chmod +x install.sh
 ./install.sh
 ```
 
-**Note:** You must **log out** after installing. The script creates a hardware permission rule so you do not need to run the app as root.
+**Note:** You must **Log Out** after installing. The script creates a new hardware permission rule so you don't have to run the app as root.
 
 ---
 
-## Uninstallation
+## 🗑️ Uninstallation
+
+If you want to remove Moonlight-Vanity, the included script will remove the desktop shortcut, config files, and system permissions for you.
 
 ```bash
+# Enter the directory (if not already there)
 cd Moonlight-Vanity
+
+# Make the uninstaller executable
 chmod +x uninstall.sh
+
+# Run the uninstaller
 ./uninstall.sh
+
+# Finally, leave the deleted directory
 cd ..
 ```
 
 ---
 
-## Usage
+## 📖 Usage
 
-Once installed, search for **Moonlight** in your application menu.
+Once installed, simply search for **Moonlight** in your application menu.
 
-### Dashboard
+### 🟢 The Dashboard
+The interface is split into simple controls:
 
-* **Master Switch:** Global safety toggle. Must be **ON** for any clicks to register.
-* **Target Mode:**
-    * **Mouse:** Auto-click left and right mouse buttons.
-    * **Keyboard:** Spam a specific key (e.g. `Space`, `F`) instead of clicking.
+* **Master Switch:** The global safety. This must be **ON** for any clicks to register.
 * **Trigger Mode:**
-    * **Toggle:** Press once to start, again to stop.
-    * **Hold:** Clicks only while the key is held down.
+    * **Toggle:** Press key to start clicking, press again to stop.
+    * **Hold:** Clicks only while you physically hold the key down.
 * **Humanization:**
-    * **Legit:** Realistic jitter and timing drift.
-    * **Blatant:** Strict timing with minimal variance.
+    * **Legit:** Adds realistic jitter and timing drift (recommended for gaming).
+    * **Blatant:** Strict timing with little variance (maximum efficiency).
+* **Click Sounds:**
+    * **Toggle:** Enable or disable click sounds.
+    * **Sound Pack:** Pick a mouse sound profile from the dropdown.
+    * **Volume:** Adjust how loud the click sounds play.
 
 ---
 
-## Keybinds
+## 🔊 Sound Packs
 
-Rebind these in the app by clicking the button and pressing a new key.
+Sound packs live in the `./sounds/` directory. Each pack is a folder containing a `click.mp3` file.
+
+To add your own pack:
+
+```bash
+mkdir -p sounds/MyCustomPack
+cp /path/to/your/click.mp3 sounds/MyCustomPack/click.mp3
+```
+
+Restart the app and your new pack will appear in the dropdown.
+
+Default packs are sourced from [clicket](https://github.com/spreyo/clicket).
+
+---
+
+## ⌨️ Keybinds
+You can rebind these directly in the app by clicking the button and pressing a new key.
 
 | Key | Action | Description |
 | :--- | :--- | :--- |
-| **F6** | Left Click | Toggles the left mouse clicker. |
-| **F7** | Right Click | Toggles the right mouse clicker. |
-| **R-Shift** | Panic Mode | Instantly hides or shows the window. |
+| **[F6]** | **Left Click** | Toggles the left mouse clicker. |
+| **[F7]** | **Right Click** | Toggles the right mouse clicker. |
+| **[R-Shift]** | **Panic Mode** | Instantly hides or shows the window. |
 
 ---
 
-## Configuration
+## ⚙️ Configuration & Customization
 
-Presets and themes are managed from the in-app settings menu.
+The settings menu allows you to manage profiles and themes without editing files.
 
-### Presets
+### 📁 Presets
+Presets are **snapshots** of your configuration.
+* **Create:** Type a name and click "Create" to save your current settings as a new preset.
+* **Load:** Click the **Play** button (▶) to apply a preset's settings to your current session.
+* **Update:** Click the **Save** button (💾) to overwrite an existing preset with your current settings.
+* **Note:** The app remembers your *current* active settings automatically on exit, but Presets must be updated manually.
 
-* **Create:** Save your current settings as a new preset.
-* **Load:** Apply a saved preset to your session.
-* **Update:** Overwrite an existing preset with current settings.
+### 🎨 Themes
+* **Gallery:** Click any theme name (like **Dracula** or **Obsidian**) to instantly apply that color scheme.
+* **Overrides:** Use the color pickers to change specific elements like the Accent color or Background.
 
-### Themes
-
-Choose a built-in theme or override individual colors from the settings panel.
-
-### File location
-
-Config and presets are stored in:
-
+### 🔧 File Location
+All configurations and presets are stored in:
 `~/.config/Moonlight/`
 
 ---
 
-## Upstream
+## 📜 License
 
-Based on [oNxZero/Moonlight](https://github.com/oNxZero/Moonlight). Moonlight-Vanity tracks that project but keeps assist features permanently off.
-
----
-
-## License
-
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+Distributed under the MIT License. See `LICENSE` for more information.

@@ -14,6 +14,7 @@ from ui_builder import MainWindow
 from ghost_core import GhostEngine
 from input_listener import GlobalListener
 from managers import PresetManager
+from click_sounds import list_sound_packs
 
 CONFIG_DIR = os.path.expanduser("~/.config/Moonlight")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -23,16 +24,13 @@ DEFAULT_CONFIG = {
     'cps_right': 12.0,
     'jitter': 2.0,
     'rand': 1,
-    'mode': 'mouse',
-    'target_btn': -1,
     'trigger_mode': 'toggle',
     'trigger_left': 64,
     'trigger_right': 65,
     'hide_key': 54,
-    'assist_wtap': False,
-    'assist_wtap_chance': 5.0,
-    'assist_blockhit': False,
-    'assist_blockhit_chance': 5.0
+    'click_sounds': True,
+    'click_sound_volume': 80.0,
+    'click_sound_pack': list_sound_packs()[0],
 }
 
 def mask_process():
@@ -113,8 +111,11 @@ class MoonlightApp(Adw.Application):
                     cfg.update(saved)
             except Exception as e:
                 print(f"Failed to load config: {e}")
-        cfg['assist_wtap'] = False
-        cfg['assist_blockhit'] = False
+
+        packs = list_sound_packs()
+        if cfg.get('click_sound_pack') not in packs:
+            cfg['click_sound_pack'] = packs[0]
+
         return cfg
 
     def save_config(self):
@@ -151,7 +152,6 @@ class MoonlightApp(Adw.Application):
                 'hide': self.config.get('hide_key', 54)
             },
             initial_mode=self.config.get('trigger_mode', 'toggle'),
-            initial_app_mode=self.config.get('mode', 'mouse')
         )
         self.listener.start()
 
@@ -192,9 +192,10 @@ class MoonlightApp(Adw.Application):
         elif action == "load":
             cfg = self.preset_mgr.load_preset(name)
             if cfg:
-                clean_cfg = {k:v for k,v in cfg.items() if k != '_theme_config'}
-                clean_cfg['assist_wtap'] = False
-                clean_cfg['assist_blockhit'] = False
+                clean_cfg = {k: v for k, v in cfg.items() if k != '_theme_config'}
+                packs = list_sound_packs()
+                if clean_cfg.get('click_sound_pack') not in packs:
+                    clean_cfg['click_sound_pack'] = packs[0]
                 self.config.update(clean_cfg)
                 self.save_config()
                 self.config_q.put(clean_cfg)
@@ -239,10 +240,12 @@ class MoonlightApp(Adw.Application):
             GLib.idle_add(self.win.set_active_visuals, self.active_left, self.active_right)
 
     def update_bind_label(self, nice_name, code, mode):
-        if mode == 'trigger_left': self.config['trigger_left'] = code
-        elif mode == 'trigger_right': self.config['trigger_right'] = code
-        elif mode == 'hide': self.config['hide_key'] = code
-        elif mode == 'target': self.config['target_btn'] = code
+        if mode == 'trigger_left':
+            self.config['trigger_left'] = code
+        elif mode == 'trigger_right':
+            self.config['trigger_right'] = code
+        elif mode == 'hide':
+            self.config['hide_key'] = code
         self.save_config()
 
         if hasattr(self, 'win'):
@@ -257,8 +260,6 @@ class MoonlightApp(Adw.Application):
         self.state_q.put(msg)
 
     def handle_config_change(self, cfg: dict):
-        cfg['assist_wtap'] = False
-        cfg['assist_blockhit'] = False
         self.config.update(cfg)
         self.save_config()
         self.config_q.put(cfg)
@@ -267,10 +268,14 @@ class MoonlightApp(Adw.Application):
         self.state_q.put("PAUSE" if suspend else "RESUME")
 
     def on_shutdown(self, app):
-        try: self.state_q.put("STOP")
-        except: pass
-        try: self.listener.stop()
-        except: pass
+        try:
+            self.state_q.put("STOP")
+        except Exception:
+            pass
+        try:
+            self.listener.stop()
+        except Exception:
+            pass
         if self.proc.is_alive():
             self.proc.terminate()
 
